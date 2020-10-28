@@ -29,8 +29,17 @@ def computeHomography(f1, f2, matches, A_out=None):
     # Construct the A matrix that will be used to compute the homography
     # based on the given set of matches among feature sets f1 and f2.
 
-    raise Exception("TODO 2 in alignment.py not implemented")
-
+    A_n = len(matches)
+    A = np.zeros((2*A_n, 9))
+    for i in range(A_n):
+        #Get the vals from the list
+        xn,yn = f1[i].pt
+        xnp, ynp = f2[i].pt
+        #Put 'em in A using numpy slice-fu
+        A[2*i,0:3] = xn,yn,1
+        A[2*i,6:] = -xnp*xn, -xnp*yn, -xnp
+        A[2*i+1, 3:] = xn, yn, 1, -ynp*xn, -ynp*yn, -ynp
+    
     #END TODO
 
     if A_out is not None:
@@ -44,7 +53,8 @@ def computeHomography(f1, f2, matches, A_out=None):
     #BEGIN TODO 3
     #Fill the homography H with the correct values
 
-    raise Exception("TODO 3 in alignment.py not implemented")
+    x = np.reshape(x,(3,3))
+    H[:,:] = x[:,:]
 
     #END TODO
 
@@ -176,3 +186,9 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
 
     return M
 
+
+def minimizeAx(A):
+    """ Given an n-by-m array A, return the 1-by-m vector x that minimizes
+    ||Ax||^2 subject to ||x|| = 1.  This turns out to be the right singular
+    vector of A corresponding to the smallest singular value."""
+    return np.linalg.svd(A)[2][-1,:]
