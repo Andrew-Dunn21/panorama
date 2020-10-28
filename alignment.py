@@ -52,9 +52,11 @@ def computeHomography(f1, f2, matches, A_out=None):
 
     #BEGIN TODO 3
     #Fill the homography H with the correct values
-
-    x = np.reshape(x,(3,3))
-    H[:,:] = x[:,:]
+    
+    x = np.reshape(x,(3,3)) #Squish the x
+    H[:,:] = x[:,:] #Feed H the x
+    #Norm H
+    H = H * (1/H[2,2])
 
     #END TODO
 
@@ -94,7 +96,31 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     #Your homography handling code should call computeHomography.
     #This function should also call getInliers and, at the end,
     #least_squares_fit.
-    raise Exception("TODO 4 in alignment.py not implemented")
+    
+    #First, set s based on the motion model
+    if m == eTranslate:
+        s = 2
+    else:
+        s = 4
+        
+    #RANSAC Loop
+    best = np.zeros(1)
+    M = np.eye(3)
+    cMatches = matches.copy()
+    for i in range(nRANSAC):
+        #Get the points
+        d_i = np.random.choice(matches, s, replace=False)
+        #Build the model
+        Mi = computeHomography(f1, f2, d_i)
+        #Get the inliers
+        innies = getInliers(f1, f2, d_i, Mi, RANSACthresh)
+        
+        #Update best if innies is the new best
+        if len(innies) > len(best):
+            best = innies
+            M = Mi
+    M = leastSquaresFit(f1, f2, matches, m, best)
+    
     #END TODO
     return M
 
@@ -128,7 +154,14 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         # transformed by M, is within RANSACthresh of its match in f2.
         # If so, append i to inliers
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO 5 in alignment.py not implemented")
+        x,y = f1[matches[i].queryIdx].pt
+        test = np.dot(M,np.array([[x],[y],[1]]))
+        x,y = test[0:2]
+        xp,yp = f2[matches[i].queryIdx].pt
+        dist = (x-xp)**2 + (y-yp)**2
+        if dist < RANSACthresh:
+            inlier_indices.append(i)
+        
         #TODO-BLOCK-END
         #END TODO
 
@@ -158,6 +191,10 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
     # and full homographies (eHomography).
 
     M = np.eye(3)
+    #Gotta get the matches we need to do the math from the inlier_indices
+    in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
+    for i in range(len(inlier_indices)):
+        in_matches[i] = matches[inlier_indices[i]]
 
     if m == eTranslate:
         #For spherically warped images, the transformation is a
@@ -171,14 +208,18 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         #BEGIN TODO 6 :Compute the average translation vector over all inliers.
         # Fill in the appropriate entries of M to represent the average
         # translation transformation.
-        raise Exception("TODO 6 in alignment.py not implemented")
+        
+        
+        
         #END TODO
 
     elif m == eHomography:
         #BEGIN TODO 7
         #Compute a homography M using all inliers. This should call
         # computeHomography.
-        raise Exception("TODO 7 in alignment.py not implemented")
+        
+        M = computeHomography(f1, f2, in_matches)
+        
         #END TODO
 
     else:
