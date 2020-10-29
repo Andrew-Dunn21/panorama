@@ -157,9 +157,9 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         x,y = f1[matches[i].queryIdx].pt
         test = np.dot(M,np.array([[x],[y],[1]]))
         x,y = test[0:2]
-        xp,yp = f2[matches[i].queryIdx].pt
+        xp,yp = f2[matches[i].trainIdx].pt
         dist = (x-xp)**2 + (y-yp)**2
-        if dist < RANSACthresh:
+        if dist <= RANSACthresh:
             inlier_indices.append(i)
         
         #TODO-BLOCK-END
