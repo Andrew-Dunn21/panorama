@@ -33,8 +33,8 @@ def computeHomography(f1, f2, matches, A_out=None):
     A = np.zeros((2*A_n, 9))
     for i in range(A_n):
         #Get the vals from the list
-        xn,yn = f1[i].pt
-        xnp, ynp = f2[i].pt
+        xn,yn = f1[matches[i].queryIdx].pt
+        xnp, ynp = f2[matches[i].trainIdx].pt
         #Put 'em in A using numpy slice-fu
         A[2*i,0:3] = xn,yn,1
         A[2*i,6:] = -xnp*xn, -xnp*yn, -xnp
@@ -57,6 +57,9 @@ def computeHomography(f1, f2, matches, A_out=None):
     H[:,:] = x[:,:] #Feed H the x
     #Norm H
     H = H * (1/H[2,2])
+    
+##    print()
+##    print(H)
 
     #END TODO
 
@@ -154,12 +157,17 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         # transformed by M, is within RANSACthresh of its match in f2.
         # If so, append i to inliers
         #TODO-BLOCK-BEGIN
+        
+        #Get the first coords
         x,y = f1[matches[i].queryIdx].pt
+        #Move them
         test = np.dot(M,np.array([[x],[y],[1]]))
         x,y = test[0:2]
+        #Get the second coords
         xp,yp = f2[matches[i].trainIdx].pt
+        #Test them
         dist = (x-xp)**2 + (y-yp)**2
-        if dist <= RANSACthresh:
+        if dist <= RANSACthresh:#If they're good, keep 'em
             inlier_indices.append(i)
         
         #TODO-BLOCK-END
@@ -208,9 +216,14 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         #BEGIN TODO 6 :Compute the average translation vector over all inliers.
         # Fill in the appropriate entries of M to represent the average
         # translation transformation.
+        for j in range(len(in_matches)):
+            u += (f2[in_matches[j].trainIdx].pt[0] -f1[in_matches[j].queryIdx].pt[0])
+            v += (f2[in_matches[j].trainIdx].pt[1] - f1[in_matches[j].queryIdx].pt[1])
+        u = u / len(in_matches)
+        v = v / len(in_matches)
         
         
-        
+        M[0:2,2] = u,v
         #END TODO
 
     elif m == eHomography:
