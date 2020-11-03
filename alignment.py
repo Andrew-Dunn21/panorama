@@ -201,8 +201,10 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
     M = np.eye(3)
     #Gotta get the matches we need to do the math from the inlier_indices
     in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
-    for i in range(len(inlier_indices)):
-        in_matches[i] = matches[inlier_indices[i]]
+    num_matches = len(inlier_indices)
+    for i in range(num_matches):
+        temp = int(inlier_indices[i])
+        in_matches[i] = matches[temp]
 
     if m == eTranslate:
         #For spherically warped images, the transformation is a

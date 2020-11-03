@@ -64,7 +64,35 @@ def accumulateBlend(img, acc, M, blendWidth):
     img = img.astype(np.float64) / 255.0
 
     # BEGIN TODO 10: Fill in this routine
-    raise Exception("TODO 10 in blend.py not implemented")
+    y,x = acc.shape[:2]
+    beta, alfa = img.shape[:2]
+    M_inv = np.linalg.inv(M)
+    for i in range(y):
+        for j in range(x):
+            ix,iy = np.dot(M_inv, np.array([[j],[i],[1]]))[:2]
+            offset = math.floor(blendWidth/2)
+            x1 = int(math.floor(ix) - offset)
+            x2 = int(math.ceil(ix) + offset)
+            y1 = int(math.floor(iy) - offset)
+            y2 = int(math.ceil(iy) + offset)
+            
+            if x1 >= 0 and x1 < alfa:
+                if x2 >= 0 and x2 < alfa:
+                    if y1 >= 0 and y1 < beta:
+                        if y2 >= 0 and y2 < beta:
+                            t1 = img[y1,x1]
+                            t1 = t1*((x2-ix)*(y2-iy))
+                            t2 = img[y2,x1]
+                            t2 = t2*((x2-ix)*(iy-y1))
+                            t3 = img[y2,x2]
+                            t3 = t3*((ix-x1)*(iy-y1))
+                            t4 = img[y1,x2]
+                            t4 = t4*((ix-x1)*(y2-iy))
+                            val = t1 + t2 + t3 + t4
+                            acc[i,j,:3] += val
+                            if val.all() != 0:
+                                acc[:,:,3] += 1
+            
     # END TODO
 
 
@@ -77,7 +105,9 @@ def normalizeBlend(acc):
          img: image with r,g,b values of acc normalized
     """
     # BEGIN TODO 11: fill in this routine
-    raise Exception("TODO 11 in blend.py not implemented")
+    acc[acc[:,:,3]>0] /= acc[:,:,3]
+    img = acc
+    img[:,:,3] = 1
     # END TODO
     return (img * 255).astype(np.uint8)
 
