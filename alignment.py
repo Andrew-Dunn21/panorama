@@ -55,6 +55,9 @@ def computeHomography(f1, f2, matches, A_out=None):
     
     x = np.reshape(x,(3,3)) #Squish the x
     H[:,:] = x[:,:] #Feed H the x
+##    for j  in range(9):
+##        H[j] = x[j]
+##    H = np.reshape(H,(3,3))
     #Norm H
     H = H * (1/H[2,2])
     
@@ -102,30 +105,37 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     
     #First, set s based on the motion model
     if m == eTranslate:
-        s = 2
+        s = 1
     else:
         s = 4
         
     #RANSAC Loop
     best = np.zeros(1)
     M = np.eye(3)
-    cMatches = matches.copy()
+    print('match count: ' + str(len(matches)))
     for i in range(nRANSAC):
         #Get the points
         d_i = np.random.choice(matches, s, replace=False)
         #Build the model
         Mi = computeHomography(f1, f2, d_i)
+##        if m == eTranslate:
+##            Mi = np.eye(3)
+##            Mi[0,2] = f2[d_i[0].trainIdx].pt[0] - f1[d_i[0].queryIdx].pt[0]
+##            Mi[1,2] = f2[d_i[0].trainIdx].pt[1] - f1[d_i[0].queryIdx].pt[1]
+##        else:
+##            Mi = computeHomography(f1, f2, d_i)
         #Get the inliers
         innies = getInliers(f1, f2, d_i, Mi, RANSACthresh)
         
         #Update best if innies is the new best
         if len(innies) > len(best):
+            print('\nprev best: ' + str(len(best)) + ' current ins #: ' + str(len(innies)))
             best = innies
-            M = Mi
     M = leastSquaresFit(f1, f2, matches, m, best)
     
     #END TODO
     return M
+    
 
 def getInliers(f1, f2, matches, M, RANSACthresh):
     '''
@@ -162,17 +172,26 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         x,y = f1[matches[i].queryIdx].pt
         #Move them
         test = np.dot(M,np.array([[x],[y],[1]]))
-        x,y = test[0:2]
+        
+        if test[2] != 0:
+            test /= test[2]
+        else:
+            print('test:')
+            print(test)
+            print('M:')
+            print(M)
+            raise Exception("Can't divide by zero")
+        x,y,_ = test
         #Get the second coords
         xp,yp = f2[matches[i].trainIdx].pt
         #Test them
-        dist = (x-xp)**2 + (y-yp)**2
-        if dist <= RANSACthresh:#If they're good, keep 'em
+        dist = ((xp-x)**2 + (yp-y)**2)**0.5
+        if dist < RANSACthresh:#If they're good, keep 'em
             inlier_indices.append(i)
         
         #TODO-BLOCK-END
         #END TODO
-
+    print(len(inlier_indices), end=' ')
     return inlier_indices
 
 def leastSquaresFit(f1, f2, matches, m, inlier_indices):
@@ -199,12 +218,6 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
     # and full homographies (eHomography).
 
     M = np.eye(3)
-    #Gotta get the matches we need to do the math from the inlier_indices
-    in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
-    num_matches = len(inlier_indices)
-    for i in range(num_matches):
-        temp = int(inlier_indices[i])
-        in_matches[i] = matches[temp]
 
     if m == eTranslate:
         #For spherically warped images, the transformation is a
@@ -218,11 +231,12 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         #BEGIN TODO 6 :Compute the average translation vector over all inliers.
         # Fill in the appropriate entries of M to represent the average
         # translation transformation.
-        for j in range(len(in_matches)):
-            u += (f2[in_matches[j].trainIdx].pt[0] -f1[in_matches[j].queryIdx].pt[0])
-            v += (f2[in_matches[j].trainIdx].pt[1] - f1[in_matches[j].queryIdx].pt[1])
-        u = u / len(in_matches)
-        v = v / len(in_matches)
+        for j in range(len(inlier_indices)):
+            match = matches[inlier_indices[j]]
+            u += f2[match.trainIdx].pt[0] - f1[match.queryIdx].pt[0]
+            v += f2[match.trainIdx].pt[1] - f1[match.queryIdx].pt[1]
+        u = u / len(inlier_indices)
+        v = v / len(inlier_indices)
         
         
         M[0:2,2] = u,v
@@ -232,6 +246,9 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         #BEGIN TODO 7
         #Compute a homography M using all inliers. This should call
         # computeHomography.
+        in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
+        for i in range(len(inlier_indices)):
+            in_matches[i] = matches[inlier_indices[i]]
         
         M = computeHomography(f1, f2, in_matches)
         

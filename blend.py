@@ -64,47 +64,60 @@ def accumulateBlend(img, acc, M, blendWidth):
     img = img.astype(np.float64) / 255.0
 
     # BEGIN TODO 10: Fill in this routine
-    #Set y,x,beta,alfa remembering rows by columns
+    #Set y,x remembering rows by columns
     y,x = acc.shape[:2]
-    beta, alfa = img.shape[:2]
+##    print('acc.shape: ' + str(acc.shape))
     brush = np.linspace(0,1,blendWidth)
     for i in range(y):
         for j in range(x):
             #Map the output coords to the input img and norm
+            trans = np.dot(M, np.array([[j],[i],[1]]))
+            if i<5 and j < 5:
+                print(trans)
             ix, iy = trans[:2]/trans[2]
             #Now we interpolate
-            acc[i,j] += interp(img, ix, ix)
+            acc[i,j,:] += interp(img, ix, iy)
     
-    
-    
-    ##This is probably trash now
-##    for i in range(y):
-##        for j in range(x):
-##            ix,iy = np.dot(M_inv, np.array([[j],[i],[1]]))[:2]
-##            offset = math.floor(blendWidth/2)
-##            x1 = int(math.floor(ix) - offset)
-##            x2 = int(math.ceil(ix) + offset)
-##            y1 = int(math.floor(iy) - offset)
-##            y2 = int(math.ceil(iy) + offset)
-##            
-##            if x1 >= 0 and x1 < alfa:
-##                if x2 >= 0 and x2 < alfa:
-##                    if y1 >= 0 and y1 < beta:
-##                        if y2 >= 0 and y2 < beta:
-##                            t1 = img[y1,x1]
-##                            t1 = t1*((x2-ix)*(y2-iy))
-##                            t2 = img[y2,x1]
-##                            t2 = t2*((x2-ix)*(iy-y1))
-##                            t3 = img[y2,x2]
-##                            t3 = t3*((ix-x1)*(iy-y1))
-##                            t4 = img[y1,x2]
-##                            t4 = t4*((ix-x1)*(y2-iy))
-##                            val = t1 + t2 + t3 + t4
-##                            acc[i,j,:3] += val
-##                            if val.all() != 0:
-##                                acc[:,:,3] += 1
             
     # END TODO
+
+def interp(img, ix, iy):
+    """
+        INPUT:
+            img: input image (without an alpha channel)
+            ix: the warped input x-coord
+            iy: the warped input y-coord
+        OUTPUT:
+            pix: the ndarray of values to get put into acc
+                 *includes bonus alpha channel at no extra cost*
+    """
+    #Find out what we're working with remembering rows by columns for beta, alfa
+    beta, alfa = img.shape[:2]
+    #Get some bounds for the box
+    x1 = int(np.floor(ix))
+    x2 = int(np.ceil(ix))
+    y1 = int(np.floor(iy))
+    y2 = int(np.ceil(iy))
+    #Set up an output
+    pix = np.zeros(4)
+##    print((ix,x1,x2,iy,y1,y2))
+    if ix >= alfa-1 or iy >= beta-1 or ix < 0 or iy < 0:
+        return pix
+    
+    I = img[y2,x2] * ((ix - x1) * (iy - y1))
+    II = img[y1,x2] * ((ix-x1) * (y2 - iy))
+    III = img[y1,x1] * ((x2 - ix) * (y2 - iy))
+    IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
+    pix[:3] = I + II + III + IV
+    
+    if pix.any() != 0:
+        pix[3] = 1
+        print('*',end='')
+        return pix
+    else:
+##        print('%',end='')
+        return np.zeros(4)
+
 
 
 def normalizeBlend(acc):
@@ -116,7 +129,7 @@ def normalizeBlend(acc):
          img: image with r,g,b values of acc normalized
     """
     # BEGIN TODO 11: fill in this routine
-    acc[acc[:,:,3]>0] /= acc[:,:,3]
+    acc[acc[:,:,3]>0] /= acc[acc[:,:,3]>0]
     img = acc
     img[:,:,3] = 1
     # END TODO
@@ -164,9 +177,9 @@ def getAccSize(ipv):
         # this can (should) use the code you wrote for TODO 8
 
         tminX, tminY, tmaxX, tmaxY = imageBoundingBox(img, M)
-        if tminX < minX:
+        if tminX < minX :
             minX = tminX
-        if tminY < minY:
+        if tminY < minY :
             minY = tminY
         if tmaxX > maxX:
             maxX = tmaxX
@@ -181,7 +194,9 @@ def getAccSize(ipv):
     accHeight = int(math.ceil(maxY) - math.floor(minY))
     print('accWidth, accHeight:', (accWidth, accHeight))
     translation = np.array([[1, 0, -minX], [0, 1, -minY], [0, 0, 1]])
-
+##    if accWidth > (len(ipv)*width):
+##        raise Exception("Seems like a sus width")
+                   
     return accWidth, accHeight, channels, width, translation
 
 
@@ -273,6 +288,7 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
     croppedImage = cv2.warpPerspective(
         compImage, A, (outputWidth, accHeight), flags=cv2.INTER_LINEAR
     )
+    print("Yay! We did it!")
 
     return croppedImage
 
