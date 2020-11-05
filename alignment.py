@@ -110,7 +110,7 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
         s = 4
         
     #RANSAC Loop
-    best = np.zeros(1)
+    best = []
     M = np.eye(3)
     print('match count: ' + str(len(matches)))
     for i in range(nRANSAC):
@@ -181,7 +181,9 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
             print('M:')
             print(M)
             raise Exception("Can't divide by zero")
-        x,y,_ = test
+        x1,y1 = test[:2]
+        x1 = x1[0]
+        y1 = y1[0]
         #Get the second coords
         xp,yp = f2[matches[i].trainIdx].pt
         #Test them
@@ -191,7 +193,7 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         
         #TODO-BLOCK-END
         #END TODO
-    print(len(inlier_indices), end=' ')
+##    print(len(inlier_indices), end=' ')
     return inlier_indices
 
 def leastSquaresFit(f1, f2, matches, m, inlier_indices):
