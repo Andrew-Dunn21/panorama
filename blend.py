@@ -77,31 +77,21 @@ def accumulateBlend(img, acc, M, blendWidth):
     
     #Feather time (RIP runtime...)
     bl = blendWidth
-##    bw = np.linspace(0,1,blendWidth)
-##    wb = np.flip(bw)
-##    for a in range(beta):#Rows Loop
-##        img[a,:bl,3] *= bw
-##        img[a,alfa-bl:,3] *= wb
-##    for c in range(alfa):#Cols Loop
-##        img[:bl,c,3] *= bw
-##        img[beta-bl:,c,3] *= wb
+    bw = np.linspace(0,1,blendWidth)
+    wb = np.flip(bw)
+    #Reshape the blending brush to make it broadcastable
+    bw = np.dstack((bw,bw,bw,bw))
+    bw = np.reshape(bw,(bl,4))
+    wb = np.dstack((wb,wb,wb,wb))
+    wb = np.reshape(wb,(bl,4))
+    #Loop to apply weights
+    for a in range(beta):#Rows Loop
+        img[a,:bl,:] *= bw
+        img[a,alfa-bl:,:] *= wb
+    for c in range(alfa):#Cols Loop
+        img[:bl,c,:] *= bw
+        img[beta-bl:,c,:] *= wb
 
-##    for a in range(bw):#Rows
-##        val = a/bw
-##        img[a,:,3] = val
-##    for b in range(bw):#Cols
-##        val = b/bw
-##        img[:,b,3] = val
-##    for c in range(bw):#Rows
-##        val = 1 - (c/bw)
-##        dex = beta - bw + c
-##        img[dex,:,3] = val
-##    for d in range(bw):#Cols
-##        val = 1 - (d/bw)
-##        dex = alfa - bw + d
-##        img[:,dex,3] = val
-            
-        
     M_i = np.linalg.inv(M)
     for i in range(y):
         for j in range(x):
@@ -153,8 +143,8 @@ def interp(img, ix, iy):
         IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
         pix = I + II + III + IV
 ##    print(pix[3], end=' ')
-    if pix[:3].all() == 0:
-        pix[3] = 0
+##    if pix[:3].all() == 0:
+##        pix[3] = 0
     return pix
 
 
