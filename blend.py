@@ -35,9 +35,13 @@ def imageBoundingBox(img, M):
     bR = np.array([[w-1],[h-1],[1]])
     #Transform the corners
     uL = np.dot(M, uL)
+    uL = uL/uL[2]
     uR = np.dot(M, uR)
+    uR = uR/uR[2]
     bL = np.dot(M, bL)
+    bL = bL/bL[2]
     bR = np.dot(M, bR)
+    bR = bR/bR[2]
     #Choose the vals
     minY = min(uL[1], bL[1], uR[1], bR[1])
     maxY = max(uL[1], bL[1], uR[1], bR[1])
@@ -67,56 +71,91 @@ def accumulateBlend(img, acc, M, blendWidth):
     #Set y,x remembering rows by columns
     y,x = acc.shape[:2]
 ##    print('acc.shape: ' + str(acc.shape))
-    brush = np.linspace(0,1,blendWidth)
+    #Add 4th img channel
+    beta, alfa = img.shape[:2]
+    img = np.dstack((img, np.ones((beta,alfa),dtype=img.dtype)))
+    
+    #Feather time (RIP runtime...)
+    bl = blendWidth
+##    bw = np.linspace(0,1,blendWidth)
+##    wb = np.flip(bw)
+##    for a in range(beta):#Rows Loop
+##        img[a,:bl,3] *= bw
+##        img[a,alfa-bl:,3] *= wb
+##    for c in range(alfa):#Cols Loop
+##        img[:bl,c,3] *= bw
+##        img[beta-bl:,c,3] *= wb
+
+##    for a in range(bw):#Rows
+##        val = a/bw
+##        img[a,:,3] = val
+##    for b in range(bw):#Cols
+##        val = b/bw
+##        img[:,b,3] = val
+##    for c in range(bw):#Rows
+##        val = 1 - (c/bw)
+##        dex = beta - bw + c
+##        img[dex,:,3] = val
+##    for d in range(bw):#Cols
+##        val = 1 - (d/bw)
+##        dex = alfa - bw + d
+##        img[:,dex,3] = val
+            
+        
+    M_i = np.linalg.inv(M)
     for i in range(y):
         for j in range(x):
             #Map the output coords to the input img and norm
-            trans = np.dot(M, np.array([[j],[i],[1]]))
-            if i<5 and j < 5:
-                print(trans)
-            ix, iy = trans[:2]/trans[2]
+            trans = np.dot(M_i, np.array([[j],[i],[1]]))
+            ix, iy = trans[:2]
+            ix = ix /trans[2]
+            iy = iy /trans[2]
             #Now we interpolate
-            acc[i,j,:] += interp(img, ix, iy)
-    
+            if ix <= alfa-1 and ix >= 0:
+                if iy <= beta-1 and iy >= 0:
+                    acc[i,j,:] += interp(img, ix, iy)
+            else:
+                acc[i,j,:] += np.zeros(4)
             
     # END TODO
 
 def interp(img, ix, iy):
     """
         INPUT:
-            img: input image (without an alpha channel)
+            img: input image
             ix: the warped input x-coord
             iy: the warped input y-coord
         OUTPUT:
             pix: the ndarray of values to get put into acc
-                 *includes bonus alpha channel at no extra cost*
+                 
     """
     #Find out what we're working with remembering rows by columns for beta, alfa
     beta, alfa = img.shape[:2]
+    
     #Get some bounds for the box
     x1 = int(np.floor(ix))
     x2 = int(np.ceil(ix))
     y1 = int(np.floor(iy))
     y2 = int(np.ceil(iy))
+    
+    
     #Set up an output
     pix = np.zeros(4)
-##    print((ix,x1,x2,iy,y1,y2))
-    if ix >= alfa-1 or iy >= beta-1 or ix < 0 or iy < 0:
-        return pix
-    
+##    if ix >= alfa-1 or iy >= beta-1 or ix < 0 or iy < 0:
+##        return pix
+##    if x2-x1 == 0:
+##        if y2-y1 == 0:
+##            pix = img[y1,x1]
+##    else:
     I = img[y2,x2] * ((ix - x1) * (iy - y1))
     II = img[y1,x2] * ((ix-x1) * (y2 - iy))
     III = img[y1,x1] * ((x2 - ix) * (y2 - iy))
     IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
-    pix[:3] = I + II + III + IV
-    
-    if pix.any() != 0:
-        pix[3] = 1
-        print('*',end='')
-        return pix
-    else:
-##        print('%',end='')
-        return np.zeros(4)
+    pix = I + II + III + IV
+##    print(pix[3], end=' ')
+    if pix[:3].all() == 0:
+        pix[3] = 0
+    return pix
 
 
 
@@ -129,8 +168,20 @@ def normalizeBlend(acc):
          img: image with r,g,b values of acc normalized
     """
     # BEGIN TODO 11: fill in this routine
-    acc[acc[:,:,3]>0] /= acc[acc[:,:,3]>0]
-    img = acc
+    #Get the dims
+    y,x = acc.shape[:2]
+    #Split into 4 channels for easy numpy-fu
+    R,G,B,A = np.split(acc,4,axis=2)
+    R = np.reshape(R,(y,x))
+    G = np.reshape(G,(y,x))
+    B = np.reshape(B,(y,x))
+    A = np.reshape(A,(y,x))
+    R[A>0] /= A[A>0]
+    G[A>0] /= A[A>0]
+    B[A>0] /= A[A>0]
+    A[A>0] /= A[A>0]
+##    acc[acc[:,:,3]>0] /= acc[acc[:,:,3]>0]
+    img = np.dstack((R,G,B,A))
     img[:,:,3] = 1
     # END TODO
     return (img * 255).astype(np.uint8)
@@ -177,14 +228,18 @@ def getAccSize(ipv):
         # this can (should) use the code you wrote for TODO 8
 
         tminX, tminY, tmaxX, tmaxY = imageBoundingBox(img, M)
-        if tminX < minX :
-            minX = tminX
-        if tminY < minY :
-            minY = tminY
-        if tmaxX > maxX:
-            maxX = tmaxX
-        if tmaxY > maxY:
-            maxY = tmaxY
+        minX = min(minX, tminX)
+        minY = min(minY, tminY)
+        maxX = max(maxX, tmaxX)
+        maxY = max(maxY, tmaxY)
+##        if tminX < minX :
+##            minX = tminX
+##        if tminY < minY :
+##            minY = tminY
+##        if tmaxX > maxX:
+##            maxX = tmaxX
+##        if tmaxY > maxY:
+##            maxY = tmaxY
         
         #TODO-BLOCK-END
         # END TODO
@@ -194,8 +249,6 @@ def getAccSize(ipv):
     accHeight = int(math.ceil(maxY) - math.floor(minY))
     print('accWidth, accHeight:', (accWidth, accHeight))
     translation = np.array([[1, 0, -minX], [0, 1, -minY], [0, 0, 1]])
-##    if accWidth > (len(ipv)*width):
-##        raise Exception("Seems like a sus width")
                    
     return accWidth, accHeight, channels, width, translation
 

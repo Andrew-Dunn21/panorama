@@ -112,27 +112,31 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     #RANSAC Loop
     best = []
     M = np.eye(3)
-    print('match count: ' + str(len(matches)))
+##    print('match count: ' + str(len(matches)))
     for i in range(nRANSAC):
         #Get the points
         d_i = np.random.choice(matches, s, replace=False)
         #Build the model
-        Mi = computeHomography(f1, f2, d_i)
-##        if m == eTranslate:
-##            Mi = np.eye(3)
-##            Mi[0,2] = f2[d_i[0].trainIdx].pt[0] - f1[d_i[0].queryIdx].pt[0]
-##            Mi[1,2] = f2[d_i[0].trainIdx].pt[1] - f1[d_i[0].queryIdx].pt[1]
-##        else:
-##            Mi = computeHomography(f1, f2, d_i)
+##        Mi = computeHomography(f1, f2, d_i)
+        if m == eTranslate:
+            Mi = np.eye(3)
+            Mi[0,2] = f2[d_i[0].trainIdx].pt[0] - f1[d_i[0].queryIdx].pt[0]
+            Mi[1,2] = f2[d_i[0].trainIdx].pt[1] - f1[d_i[0].queryIdx].pt[1]
+        else:
+            Mi = computeHomography(f1, f2, d_i)
+            try:
+                np.linalg.inv(Mi)
+            except Exception as e:
+                print(e)
+                continue
         #Get the inliers
-        innies = getInliers(f1, f2, d_i, Mi, RANSACthresh)
+        innies = getInliers(f1, f2, matches, Mi, RANSACthresh)
         
         #Update best if innies is the new best
         if len(innies) > len(best):
-            print('\nprev best: ' + str(len(best)) + ' current ins #: ' + str(len(innies)))
+##            print('\nprev best: ' + str(len(best)) + ' current ins #: ' + str(len(innies)))
             best = innies
     M = leastSquaresFit(f1, f2, matches, m, best)
-    
     #END TODO
     return M
     
@@ -171,7 +175,7 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         #Get the first coords
         x,y = f1[matches[i].queryIdx].pt
         #Move them
-        test = np.dot(M,np.array([[x],[y],[1]]))
+        test = np.dot(M,np.array([[x],[y],[1]], dtype=M.dtype))
         
         if test[2] != 0:
             test /= test[2]
@@ -182,18 +186,20 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
             print(M)
             raise Exception("Can't divide by zero")
         x1,y1 = test[:2]
-        x1 = x1[0]
-        y1 = y1[0]
+##        x1 = x1[0]
+##        y1 = y1[0]
         #Get the second coords
         xp,yp = f2[matches[i].trainIdx].pt
         #Test them
-        dist = ((xp-x)**2 + (yp-y)**2)**0.5
+        dist = ((xp-x1)**2 + (yp-y1)**2)**0.5
+        dist= dist[0]
+##        print(str(dist) + str(type(dist)),sep=' type: ', end=' ')
         if dist < RANSACthresh:#If they're good, keep 'em
             inlier_indices.append(i)
+##            print("yay")
         
         #TODO-BLOCK-END
         #END TODO
-##    print(len(inlier_indices), end=' ')
     return inlier_indices
 
 def leastSquaresFit(f1, f2, matches, m, inlier_indices):
@@ -250,6 +256,7 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         # computeHomography.
         in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
         for i in range(len(inlier_indices)):
+            #Compile just the inliers to pass to computeHomography
             in_matches[i] = matches[inlier_indices[i]]
         
         M = computeHomography(f1, f2, in_matches)
