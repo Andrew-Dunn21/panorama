@@ -143,15 +143,15 @@ def interp(img, ix, iy):
     pix = np.zeros(4)
 ##    if ix >= alfa-1 or iy >= beta-1 or ix < 0 or iy < 0:
 ##        return pix
-##    if x2-x1 == 0:
-##        if y2-y1 == 0:
-##            pix = img[y1,x1]
-##    else:
-    I = img[y2,x2] * ((ix - x1) * (iy - y1))
-    II = img[y1,x2] * ((ix-x1) * (y2 - iy))
-    III = img[y1,x1] * ((x2 - ix) * (y2 - iy))
-    IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
-    pix = I + II + III + IV
+    if x2-x1 == 0:
+        if y2-y1 == 0:
+            pix = img[y1,x1]
+    else:
+        I = img[y2,x2] * ((ix - x1) * (iy - y1))
+        II = img[y1,x2] * ((ix-x1) * (y2 - iy))
+        III = img[y1,x1] * ((x2 - ix) * (y2 - iy))
+        IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
+        pix = I + II + III + IV
 ##    print(pix[3], end=' ')
     if pix[:3].all() == 0:
         pix[3] = 0
