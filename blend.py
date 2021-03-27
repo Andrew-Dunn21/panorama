@@ -26,7 +26,6 @@ def imageBoundingBox(img, M):
          maxX: int for the maximum X value of a corner
          maxY: int for the maximum Y value of a corner
     """
-    #TODO 8 determine the outputs for this method.
     h,w = img.shape[:2]
     #Get the corners
     uL = np.array([[0],[0],[1]])
@@ -48,7 +47,6 @@ def imageBoundingBox(img, M):
     minX = min(bL[0], bR[0], uR[0], uL[0])
     maxX = max(bL[0], bR[0], uR[0], uL[0])
     
-    #TODO-BLOCK-END
     return int(minX), int(minY), int(maxX), int(maxY)
 
 
@@ -67,10 +65,8 @@ def accumulateBlend(img, acc, M, blendWidth):
     # convert input image to floats
     img = img.astype(np.float64) / 255.0
 
-    # BEGIN TODO 10: Fill in this routine
     #Set y,x remembering rows by columns
     y,x = acc.shape[:2]
-##    print('acc.shape: ' + str(acc.shape))
     #Add 4th img channel
     beta, alfa = img.shape[:2]
     img = np.dstack((img, np.ones((beta,alfa),dtype=img.dtype)))
@@ -106,8 +102,6 @@ def accumulateBlend(img, acc, M, blendWidth):
                     acc[i,j,:] += interp(img, ix, iy)
             else:
                 acc[i,j,:] += np.zeros(4)
-            
-    # END TODO
 
 def interp(img, ix, iy):
     """
@@ -131,8 +125,7 @@ def interp(img, ix, iy):
     
     #Set up an output
     pix = np.zeros(4)
-##    if ix >= alfa-1 or iy >= beta-1 or ix < 0 or iy < 0:
-##        return pix
+
     if x2-x1 == 0:
         if y2-y1 == 0:
             pix = img[y1,x1]
@@ -142,9 +135,7 @@ def interp(img, ix, iy):
         III = img[y1,x1] * ((x2 - ix) * (y2 - iy))
         IV = img[y2,x1] * ((x2 - ix) * (iy - y1))
         pix = I + II + III + IV
-##    print(pix[3], end=' ')
-##    if pix[:3].all() == 0:
-##        pix[3] = 0
+
     return pix
 
 
@@ -157,7 +148,7 @@ def normalizeBlend(acc):
        OUTPUT:
          img: image with r,g,b values of acc normalized
     """
-    # BEGIN TODO 11: fill in this routine
+    
     #Get the dims
     y,x = acc.shape[:2]
     #Split into 4 channels for easy numpy-fu
@@ -170,7 +161,7 @@ def normalizeBlend(acc):
     G[A>0] /= A[A>0]
     B[A>0] /= A[A>0]
     A[A>0] /= A[A>0]
-##    acc[acc[:,:,3]>0] /= acc[acc[:,:,3]>0]
+
     img = np.dstack((R,G,B,A))
     img[:,:,3] = 1
     # END TODO
@@ -213,26 +204,11 @@ def getAccSize(ipv):
             channels = c
             width = w
 
-        # BEGIN TODO 9
-        # add some code here to update minX, ..., maxY
-        # this can (should) use the code you wrote for TODO 8
-
         tminX, tminY, tmaxX, tmaxY = imageBoundingBox(img, M)
         minX = min(minX, tminX)
         minY = min(minY, tminY)
         maxX = max(maxX, tmaxX)
         maxY = max(maxY, tmaxY)
-##        if tminX < minX :
-##            minX = tminX
-##        if tminY < minY :
-##            minY = tminY
-##        if tmaxX > maxX:
-##            maxX = tmaxX
-##        if tmaxY > maxY:
-##            maxY = tmaxY
-        
-        #TODO-BLOCK-END
-        # END TODO
 
     # Create an accumulator image
     accWidth = int(math.ceil(maxX) - math.floor(minX))
@@ -312,17 +288,7 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
     # Compute the affine transform
     A = np.identity(3)
     if is360:
-        # BEGIN TODO 12
-        # 497P: you aren't required to do this. 360 mode won't work.
-
-        # 597P: fill in appropriate entries in A to trim the left edge and
-        # to take out the vertical drift:
-        #   Shift it left by the correct amount
-        #   Then handle the vertical drift - using a shear in the Y direction
-        # Note: warpPerspective does forward mapping which means A is an affine
-        # transform that maps accumulator coordinates to final panorama coordinates
-        raise Exception("TODO 12 in blend.py not implemented")
-        # END TODO 12
+        raise Exception("360 degree panorama in blend.py not implemented")
 
     if A_out is not None:
         A_out[:] = A

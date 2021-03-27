@@ -25,7 +25,6 @@ def computeHomography(f1, f2, matches, A_out=None):
         Takes two lists of features, f1 and f2, and a list of feature
         matches, and estimates a homography from image 1 to image 2 from the matches.
     '''
-    #BEGIN TODO 2
     # Construct the A matrix that will be used to compute the homography
     # based on the given set of matches among feature sets f1 and f2.
 
@@ -39,8 +38,6 @@ def computeHomography(f1, f2, matches, A_out=None):
         A[2*i,0:3] = xn,yn,1
         A[2*i,6:] = -xnp*xn, -xnp*yn, -xnp
         A[2*i+1, 3:] = xn, yn, 1, -ynp*xn, -ynp*yn, -ynp
-    
-    #END TODO
 
     if A_out is not None:
         A_out[:] = A
@@ -50,21 +47,12 @@ def computeHomography(f1, f2, matches, A_out=None):
 
     H = np.eye(3) # create the homography matrix
 
-    #BEGIN TODO 3
     #Fill the homography H with the correct values
     
     x = np.reshape(x,(3,3)) #Squish the x
     H[:,:] = x[:,:] #Feed H the x
-##    for j  in range(9):
-##        H[j] = x[j]
-##    H = np.reshape(H,(3,3))
     #Norm H
     H = H * (1/H[2,2])
-    
-##    print()
-##    print(H)
-
-    #END TODO
 
     return H
 
@@ -92,17 +80,6 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
         and return as a transformation matrix M.
     '''
 
-    #BEGIN TODO 4
-    #Write this entire method.  You need to handle two types of
-    #motion models, pure translations (m == eTranslate) and
-    #full homographies (m == eHomography).  However, you should
-    #only have one outer loop to perform the RANSAC code, as
-    #the use of RANSAC is almost identical for both cases.
-
-    #Your homography handling code should call computeHomography.
-    #This function should also call getInliers and, at the end,
-    #least_squares_fit.
-    
     #First, set s based on the motion model
     if m == eTranslate:
         s = 1
@@ -112,12 +89,10 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     #RANSAC Loop
     best = []
     M = np.eye(3)
-##    print('match count: ' + str(len(matches)))
     for i in range(nRANSAC):
         #Get the points
         d_i = np.random.choice(matches, s, replace=False)
         #Build the model
-##        Mi = computeHomography(f1, f2, d_i)
         if m == eTranslate:
             Mi = np.eye(3)
             Mi[0,2] = f2[d_i[0].trainIdx].pt[0] - f1[d_i[0].queryIdx].pt[0]
@@ -137,7 +112,7 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
 ##            print('\nprev best: ' + str(len(best)) + ' current ins #: ' + str(len(innies)))
             best = innies
     M = leastSquaresFit(f1, f2, matches, m, best)
-    #END TODO
+
     return M
     
 
@@ -166,11 +141,9 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
     inlier_indices = []
 
     for i in range(len(matches)):
-        #BEGIN TODO 5
         # Determine if the ith matched feature f1[matches[i].queryIdx], when
         # transformed by M, is within RANSACthresh of its match in f2.
         # If so, append i to inliers
-        #TODO-BLOCK-BEGIN
         
         #Get the first coords
         x,y = f1[matches[i].queryIdx].pt
@@ -186,20 +159,16 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
             print(M)
             raise Exception("Can't divide by zero")
         x1,y1 = test[:2]
-##        x1 = x1[0]
-##        y1 = y1[0]
+
         #Get the second coords
         xp,yp = f2[matches[i].trainIdx].pt
         #Test them
         dist = ((xp-x1)**2 + (yp-y1)**2)**0.5
         dist= dist[0]
-##        print(str(dist) + str(type(dist)),sep=' type: ', end=' ')
+
         if dist < RANSACthresh:#If they're good, keep 'em
             inlier_indices.append(i)
-##            print("yay")
         
-        #TODO-BLOCK-END
-        #END TODO
     return inlier_indices
 
 def leastSquaresFit(f1, f2, matches, m, inlier_indices):
@@ -236,7 +205,6 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         u = 0.0
         v = 0.0
 
-        #BEGIN TODO 6 :Compute the average translation vector over all inliers.
         # Fill in the appropriate entries of M to represent the average
         # translation transformation.
         for j in range(len(inlier_indices)):
@@ -248,20 +216,15 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         
         
         M[0:2,2] = u,v
-        #END TODO
 
     elif m == eHomography:
-        #BEGIN TODO 7
-        #Compute a homography M using all inliers. This should call
-        # computeHomography.
+        
         in_matches = np.empty(len(inlier_indices), dtype=cv2.DMatch)
         for i in range(len(inlier_indices)):
             #Compile just the inliers to pass to computeHomography
             in_matches[i] = matches[inlier_indices[i]]
         
         M = computeHomography(f1, f2, in_matches)
-        
-        #END TODO
 
     else:
         raise Exception("Error: Invalid motion model.")
